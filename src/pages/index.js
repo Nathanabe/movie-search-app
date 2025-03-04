@@ -1,23 +1,28 @@
 import { useState } from 'react';
 import SearchBar from '../components/SearchBar';
-import MovieDetails from '../components/MovieDetails';
+import MovieList from '../components/MovieList';
 import Spinner from '../components/Spinner';
-import { fetchMovie } from '../utils/api';
+import { fetchMovies } from '../utils/api';
 
 export default function Home() {
-  const [movie, setMovie] = useState(null);
+  const [movies, setMovies] = useState([]);
+  const [query, setQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalResults, setTotalResults] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSearch = async (query) => {
+  const handleSearch = async (searchQuery, pageNum = 1) => {
     setLoading(true);
-    setError('');
     try {
-      const data = await fetchMovie(query);
-      setMovie(data);
+      const { movies: results, totalResults } = await fetchMovies(searchQuery, pageNum);
+      setQuery(searchQuery);
+      setPage(pageNum);
+      setMovies(prev => pageNum === 1 ? results : [...prev, ...results]);
+      setTotalResults(totalResults);
+      setError('');
     } catch (err) {
       setError(err.message);
-      setMovie(null);
     } finally {
       setLoading(false);
     }
@@ -25,16 +30,22 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-100 py-8 px-4">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-4xl font-bold text-center mb-8 text-gray-800">
-          Movie Search
-        </h1>
+      <div className="max-w-6xl mx-auto">
+        <h1 className="text-4xl font-bold text-center mb-8">Movie Search</h1>
         <SearchBar onSearch={handleSearch} />
         {loading && <Spinner />}
-        {error && (
-          <p className="mt-6 text-center text-red-600 font-medium">{error}</p>
+        {error && <p className="text-red-500 text-center mt-4">{error}</p>}
+        <MovieList movies={movies} />
+        {movies.length > 0 && movies.length < totalResults && (
+          <div className="text-center mt-8">
+            <button
+              onClick={() => handleSearch(query, page + 1)}
+              className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600"
+            >
+              Load More
+            </button>
+          </div>
         )}
-        {movie && <MovieDetails movie={movie} />}
       </div>
     </div>
   );
